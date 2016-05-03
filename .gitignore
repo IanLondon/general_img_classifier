@@ -1,0 +1,9 @@
+.ipynb_checkpoints/
+*.jpg
+*.jpeg
+*.png
+*.tiff
+*.gif
+*.JPEG
+*.pyc
+101_ObjectCategories/
