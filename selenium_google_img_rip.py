@@ -97,7 +97,7 @@ if __name__ == "__main__":
     # scroll down to load many images
     scroll_down()
 
-    prev_file_no = 865 #on an aborted scrape, set this to the last file written + 1
+    prev_file_no = 0 #on an aborted scrape, set this to the last file written + 1
     imgs = driver.find_elements_by_xpath(image_xpath)
     # iterate thru all images, and when you're done, check to see if there are any more
     # for some reason the first image_xpath returns only 100 images,
