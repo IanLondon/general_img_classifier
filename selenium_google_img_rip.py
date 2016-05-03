@@ -56,9 +56,14 @@ def save_img_src(el, file_no, sleep_time=0.25):
     base = el.get_attribute('src')
     # just guess jpeg, probably no file ext in url...
     file_name_full = '%s/%s.%s' % (DOWNLOAD_DIR, file_no, 'JPEG')
-    urllib.urlretrieve(base, file_name_full)
-    print 'wrote from url %s' % file_name_full
+    try:
+        urllib.urlretrieve(base, file_name_full)
+        print 'wrote from url %s' % file_name_full
+    except IOError as e:
+        print 'Bad URL?', e
+
     time.sleep(sleep_time)
+
 
 # Google image thumbnails are base64 html strings...
 def dl_base64_img(el, file_no, sleep_time=0.25):
@@ -91,7 +96,7 @@ if __name__ == "__main__":
     # scroll down to load many images
     scroll_down()
 
-    prev_file_no = 396 #on an aborted scrape, set this to the last file written + 1
+    prev_file_no = 606 #on an aborted scrape, set this to the last file written + 1
     imgs = driver.find_elements_by_xpath(image_xpath)
     # iterate thru all images, and when you're done, check to see if there are any more
     # for some reason the first image_xpath returns only 100 images,
