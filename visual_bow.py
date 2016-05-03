@@ -45,6 +45,26 @@ def binary_labeled_img_from_cal101(positive_folder, cal101_root='101_ObjectCateg
     return np.array(labeled_img_paths)
 
 
+def train_test_split_idxs(total_rows, test_train_ratio):
+    """
+    Get indexes for training and test rows, given a total number of rows.
+    Assumes indexes are sequential integers starting at 0: eg [0,1,2,3,...N]
+
+    Returns:
+    --------
+    training_idxs, test_idxs
+        Both lists of integers
+    """
+    row_range = range(total_rows)
+    no_training_rows = int(total_rows*(1-test_train_ratio))
+    training_idxs = np.random.choice(row_range, size=no_training_rows, replace=False)
+    test_idxs = np.array(list(set(row_range) - set(training_idxs)))
+
+    print 'Train-test split: %i training rows, %i test rows' % (len(training_idxs), len(test_idxs))
+
+    return training_idxs, test_idxs
+
+
 def gen_bow_features(labeled_img_paths, test_train_ratio, K_clusters):
     """
     Generate "visual bag of words" features for a set of images.
@@ -86,12 +106,7 @@ def gen_bow_features(labeled_img_paths, test_train_ratio, K_clusters):
 
     # Generate indexes of training rows
     total_rows = len(img_descs)
-    row_range = range(total_rows)
-    no_training_rows = int(total_rows*(1-test_train_ratio))
-    training_idxs = np.random.choice(row_range, size=no_training_rows, replace=False)
-    test_idxs = np.array(list(set(row_range) - set(training_idxs)))
-
-    print 'Train-test split: %i training rows, %i test rows' % (len(training_idxs), len(test_idxs))
+    training_idxs, test_idxs = train_test_split_idxs(total_rows, test_train_ratio)
 
     # Concatenate all descriptors in the training set together
     training_descs = [img_descs[i] for i in training_idxs]
