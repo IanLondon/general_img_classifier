@@ -28,13 +28,14 @@ def scroll_down():
     # define initial page height for 'while' loop
     last_height = driver.execute_script("return document.body.scrollHeight")
     while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
         time.sleep(8)
         try:
             driver.find_element_by_id('smb').click()
         except:
             print 'no See More button found...'
 
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         new_height = driver.execute_script("return document.body.scrollHeight")
 
         if new_height == last_height:
@@ -96,12 +97,12 @@ if __name__ == "__main__":
     # scroll down to load many images
     scroll_down()
 
-    prev_file_no = 606 #on an aborted scrape, set this to the last file written + 1
+    prev_file_no = 865 #on an aborted scrape, set this to the last file written + 1
     imgs = driver.find_elements_by_xpath(image_xpath)
     # iterate thru all images, and when you're done, check to see if there are any more
     # for some reason the first image_xpath returns only 100 images,
     # so you have to keep doing find_elements_by_xpath again and again
-    while prev_file_no < 1000 or len(imgs) == prev_file_no:
+    while prev_file_no < 1000 and len(imgs) > prev_file_no:
         scroll_down()
         imgs = driver.find_elements_by_xpath(image_xpath)
         print 'new loop. found %i images, prev_file_no was %i' % (len(imgs), prev_file_no)
