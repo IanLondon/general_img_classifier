@@ -5,7 +5,6 @@ import cv2
 import numpy as np
 import glob
 import os
-from sklearn.cluster import KMeans
 
 print 'OpenCV VERSION (should be 3.1.0 or later, with nonfree modules installed!):', cv2.__version__
 
@@ -45,52 +44,48 @@ def binary_labeled_img_from_cal101(positive_folder, cal101_root='101_ObjectCateg
     return np.array(labeled_img_paths)
 
 
-def train_test_split_idxs(total_rows, test_train_ratio):
+def train_test_val_split_idxs(total_rows, percent_test, percent_val):
     """
-    Get indexes for training and test rows, given a total number of rows.
+    Get indexes for training, test, and validation rows, given a total number of rows.
     Assumes indexes are sequential integers starting at 0: eg [0,1,2,3,...N]
 
     Returns:
     --------
-    training_idxs, test_idxs
+    training_idxs, test_idxs, val_idxs
         Both lists of integers
     """
+    if percent_test + percent_val >= 1.0:
+        raise ValueError('percent_test and percent_val must sum to less than 1.0')
+
     row_range = range(total_rows)
-    no_training_rows = int(total_rows*(1-test_train_ratio))
-    training_idxs = np.random.choice(row_range, size=no_training_rows, replace=False)
-    test_idxs = np.array(list(set(row_range) - set(training_idxs)))
 
-    print 'Train-test split: %i training rows, %i test rows' % (len(training_idxs), len(test_idxs))
+    no_test_rows = int(total_rows*(percent_test))
+    test_idxs = np.random.choice(row_range, size=no_test_rows, replace=False)
+    # remove test indexes
+    row_range = [idx for idx in row_range if idx not in test_idxs]
 
-    return training_idxs, test_idxs
+    no_val_rows = int(total_rows*(percent_val))
+    val_idxs = np.random.choice(row_range, size=no_val_rows, replace=False)
+    # remove validation indexes
+    training_idxs = [idx for idx in row_range if idx not in val_idxs]
 
+    print 'Train-test-val split: %i training rows, %i test rows, %i validation rows' % (len(training_idxs), len(test_idxs), len(val_idxs))
 
-def gen_bow_features(labeled_img_paths, test_train_ratio, K_clusters):
+    return training_idxs, test_idxs, val_idxs
+
+def gen_sift_features(labeled_img_paths):
     """
-    Generate "visual bag of words" features for a set of images.
+    Generate SIFT features for images
 
     Parameters:
     -----------
-    labeled_img_paths: list of lists
+    labeled_img_paths : list of lists
         Of the form [[image_path, label], ...]
-        The label should identify the image type. Eg 'schooner', or 18, (or even True/False for a binary detector)
-        The image_path should the full absolute path name as a string
-
-    test_train_ratio : float
-        Percentage of test rows to training rows.
-
-    K_clusters : int
-        The 'K' in KMeans. This equals the number of final "visual words" you get, which
-        also equals the number of feature columns in your final X matrices.
 
     Returns:
     --------
-    X_train, X_test, y_train, y_test, kmeans :
-        X's have K feature columns, each column corresponding to a visual word
+    img_descs: list of SIFT descriptors with same indicies as labeled_img_paths
     """
-    if not 0 < test_train_ratio < 1:
-        raise ValueError('test_train_ratio must be between 0 and 1 (non-inclusive)')
-
     # img_keypoints = {}
     img_descs = []
 
@@ -104,45 +99,94 @@ def gen_bow_features(labeled_img_paths, test_train_ratio, K_clusters):
         # img_keypoints[img_path] = kp
         img_descs.append(desc)
 
+    return img_descs
+
+
+def gen_bow_features(labeled_img_paths, percent_test, percent_val, cluster_model):
+    """
+    Generate "visual bag of words" features for a set of images.
+
+    Parameters:
+    -----------
+    labeled_img_paths : list of lists
+        Of the form [[image_path, label], ...]
+        The label should identify the image type. Eg 'schooner', or 18, (or even True/False for a binary detector)
+        The image_path should the full absolute path name as a string
+
+    percent_test : float
+        Percentage of test rows to total rows.
+
+    percent_val: float
+        Percentage of validation set rows to total rows.
+
+    cluster_model : clustering model (eg KMeans from scikit-learn)
+        The model used to cluster the SIFT features
+
+    Returns:
+    --------
+    X_train, X_test, X_val, y_train, y_test, y_val, cluster_model :
+        X's have K feature columns, each column corresponding to a visual word
+    """
+    n_clusters = cluster_model.n_clusters
+
+    # # img_keypoints = {}
+    # img_descs = []
+    #
+    # print 'generating SIFT keypoints for %i images' % len(labeled_img_paths)
+    #
+    # for img_path, label in labeled_img_paths:
+    #     img = read_image(img_path)
+    #     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #     sift = cv2.xfeatures2d.SIFT_create()
+    #     kp, desc = sift.detectAndCompute(gray, None)
+    #     # img_keypoints[img_path] = kp
+    #     img_descs.append(desc)
+    img_descs = gen_sift_features(labeled_img_paths)
+
     # Generate indexes of training rows
     total_rows = len(img_descs)
-    training_idxs, test_idxs = train_test_split_idxs(total_rows, test_train_ratio)
+    training_idxs, test_idxs, val_idxs = train_test_val_split_idxs(total_rows, percent_test, percent_val)
 
     # Concatenate all descriptors in the training set together
     training_descs = [img_descs[i] for i in training_idxs]
-    all_descriptors = [desc for desc_list in training_descs for desc in desc_list]
-    all_descriptors = np.array(all_descriptors)
+    all_train_descriptors = [desc for desc_list in training_descs for desc in desc_list]
+    all_train_descriptors = np.array(all_train_descriptors)
 
-    assert all_descriptors.shape[1] == 128
-    print '%i descriptors before clustering' % all_descriptors.shape[0]
+    if all_train_descriptors.shape[1] != 128:
+        raise ValueError('Expected SIFT descriptors to have 128 features, got', all_train_descriptors.shape[1])
 
+    print '%i descriptors before clustering' % all_train_descriptors.shape[0]
 
     # Cluster descriptors to get codebook
-    print 'Clustering on training set to get codebook of %i words' % K_clusters
-    kmeans = KMeans(n_clusters=K_clusters, n_jobs=-1)
-    # train kmeans on those descriptors selected above
-    kmeans.fit(all_descriptors)
+    print 'Using clustering model %s...' % repr(cluster_model)
+    print 'Clustering on training set to get codebook of %i words' % n_clusters
+
+    # train kmeans or other cluster model on those descriptors selected above
+    cluster_model.fit(all_train_descriptors)
     print 'done clustering'
 
     # compute set of cluster-reduced words for each image
-    img_clustered_words = [kmeans.predict(raw_words) for raw_words in img_descs]
+    img_clustered_words = [cluster_model.predict(raw_words) for raw_words in img_descs]
 
     # finally make a histogram of clustered word counts for each image. These are the final features.
     img_bow_hist = np.array(
-        [np.bincount(clustered_words, minlength=K_clusters) for clustered_words in img_clustered_words])
+        [np.bincount(clustered_words, minlength=n_clusters) for clustered_words in img_clustered_words])
 
     X_train = img_bow_hist[training_idxs]
     X_test = img_bow_hist[test_idxs]
+    X_val = img_bow_hist[val_idxs]
 
     y_labels = np.array(labeled_img_paths)[:,1]
+
     y_train = y_labels[training_idxs]
     y_test = y_labels[test_idxs]
+    y_val = img_bow_hist[val_idxs]
 
-    return X_train, X_test, y_train, y_test, kmeans
+    return X_train, X_test, X_val, y_train, y_test, y_val, cluster_model
 
-def img_to_vect(img_path, kmeans):
+def img_to_vect(img_path, cluster_model):
     """
-    Given an image path and a trained kmeans classifier,
+    Given an image path and a trained clustering model (eg KMeans),
     generates a feature vector representing that image
     """
 
@@ -151,8 +195,8 @@ def img_to_vect(img_path, kmeans):
     sift = cv2.xfeatures2d.SIFT_create()
     kp, desc = sift.detectAndCompute(gray, None)
 
-    clustered_desc = kmeans.predict(desc)
-    img_bow_hist = np.bincount(clustered_desc, minlength=kmeans.n_clusters)
+    clustered_desc = cluster_model.predict(desc)
+    img_bow_hist = np.bincount(clustered_desc, minlength=cluster_model.n_clusters)
 
     # reshape to an array containing 1 array: array[[1,2,3]]
     # to make sklearn happy (it doesn't like 1d arrays as data!)
