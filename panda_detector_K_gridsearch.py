@@ -1,4 +1,5 @@
-# from the .ipynb of the same name.
+# Grid search over K, SVM params, and AdaBoost params.
+# Ian London 2016
 
 import K_grid_search as search
 from sklearn.externals import joblib
