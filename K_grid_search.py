@@ -30,18 +30,19 @@ def run_svm(X_train, X_test, y_train, y_test, scoring,
     c_vals=[0.1, 1, 5, 10, 75], gamma_vals=[0.5, 0.1, 0.01, 0.0001, 0.00001]):
 
     param_grid = [
-      {'C': c_vals, 'kernel': ['linear']},
+    #   {'C': c_vals, 'kernel': ['linear']},
       {'C': c_vals, 'gamma': gamma_vals, 'kernel': ['rbf']},
      ]
 
     svc = GridSearchCV(SVC(), param_grid, n_jobs=-1, scoring=scoring)
     svc.fit(X_train, y_train)
     print 'train score (%s):'%scoring, svc.score(X_train, y_train)
-    print 'test score (%s):'%scoring, svc.score(X_test, y_test)
+    test_score = svc.score(X_test, y_test)
+    print 'test score (%s):'%scoring, test_score
 
     print svc.best_estimator_
 
-    return svc
+    return svc, test_score
 
 def run_ada(X_train, X_test, y_train, y_test, scoring,
     n_estimators=[100, 250, 500, 750], learning_rate=[0.8, 0.9, 1.0, 1.1, 1.2]):
@@ -55,7 +56,8 @@ def run_ada(X_train, X_test, y_train, y_test, scoring,
     ada.fit(X_train, y_train)
 
     print 'train score (%s):'%scoring, ada.score(X_train, y_train)
-    print 'test score (%s):'%scoring, ada.score(X_test, y_test)
+    test_score = ada.score(X_test, y_test)
+    print 'test score (%s):'%scoring, test_score
     print ada.best_estimator_
 
-    return ada
+    return ada, test_score
