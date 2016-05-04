@@ -14,9 +14,11 @@ def read_image(path):
         raise IOError("Unable to open '%s'. Are you sure it's a valid image path?")
     return img
 
+
 def neg_img_cal101(positive_folder, cal101_root='101_ObjectCategories', image_suffix='*.jpg'):
     """Simply return list of paths for all images in cal101 dataset, except those in positive_folder."""
     return [path for path in glob.glob(cal101_root + '/*/' + image_suffix) if positive_folder not in path]
+
 
 def binary_labeled_img_from_cal101(positive_folder, cal101_root='101_ObjectCategories', image_suffix='*.jpg'):
     """
@@ -73,6 +75,7 @@ def train_test_val_split_idxs(total_rows, percent_test, percent_val):
 
     return training_idxs, test_idxs, val_idxs
 
+
 def gen_sift_features(labeled_img_paths):
     """
     Generate SIFT features for images
@@ -84,12 +87,13 @@ def gen_sift_features(labeled_img_paths):
 
     Returns:
     --------
-    img_descs: list of SIFT descriptors with same indicies as labeled_img_paths
+    img_descs : list of SIFT descriptors with same indicies as labeled_img_paths
+    y : list of corresponding labels
     """
     # img_keypoints = {}
     img_descs = []
 
-    print 'generating SIFT keypoints for %i images' % len(labeled_img_paths)
+    print 'generating SIFT descriptors for %i images' % len(labeled_img_paths)
 
     for img_path, label in labeled_img_paths:
         img = read_image(img_path)
@@ -99,41 +103,43 @@ def gen_sift_features(labeled_img_paths):
         # img_keypoints[img_path] = kp
         img_descs.append(desc)
 
-    return img_descs
+    print 'SIFT descriptors generated.'
+
+    y = np.array(labeled_img_paths)[:,1]
+
+    return img_descs, y
 
 
-def gen_bow_features(labeled_img_paths, percent_test, percent_val, cluster_model):
+def cluster_features(img_descs, training_idxs, cluster_model):
     """
-    Generate "visual bag of words" features for a set of images.
+    Cluster the training features using the cluster_model
+    and convert each set of descriptors in img_descs
+    to a Visual Bag of Words histogram.
 
     Parameters:
     -----------
-    labeled_img_paths : list of lists
-        Of the form [[image_path, label], ...]
-        The label should identify the image type. Eg 'schooner', or 18, (or even True/False for a binary detector)
-        The image_path should the full absolute path name as a string
+    X : list of lists of SIFT descriptors (img_descs)
 
-    percent_test : float
-        Percentage of test rows to total rows.
-
-    percent_val: float
-        Percentage of validation set rows to total rows.
+    training_idxs : array/list of integers
+        Indicies for the training rows in img_descs
 
     cluster_model : clustering model (eg KMeans from scikit-learn)
         The model used to cluster the SIFT features
 
     Returns:
     --------
-    X_train, X_test, X_val, y_train, y_test, y_val, cluster_model :
-        X's have K feature columns, each column corresponding to a visual word
+    X, cluster_model :
+        X has K feature columns, each column corresponding to a visual word
+        cluster_model has been fit to the training set
     """
     n_clusters = cluster_model.n_clusters
 
-    img_descs = gen_sift_features(labeled_img_paths)
-
-    # Generate indexes of training rows
-    total_rows = len(img_descs)
-    training_idxs, test_idxs, val_idxs = train_test_val_split_idxs(total_rows, percent_test, percent_val)
+    # # Generate the SIFT descriptor features
+    # img_descs = gen_sift_features(labeled_img_paths)
+    #
+    # # Generate indexes of training rows
+    # total_rows = len(img_descs)
+    # training_idxs, test_idxs, val_idxs = train_test_val_split_idxs(total_rows, percent_test, percent_val)
 
     # Concatenate all descriptors in the training set together
     training_descs = [img_descs[i] for i in training_idxs]
@@ -151,7 +157,7 @@ def gen_bow_features(labeled_img_paths, percent_test, percent_val, cluster_model
 
     # train kmeans or other cluster model on those descriptors selected above
     cluster_model.fit(all_train_descriptors)
-    print 'done clustering'
+    print 'done clustering. Using clustering model to generate BoW histograms for each image.'
 
     # compute set of cluster-reduced words for each image
     img_clustered_words = [cluster_model.predict(raw_words) for raw_words in img_descs]
@@ -160,22 +166,43 @@ def gen_bow_features(labeled_img_paths, percent_test, percent_val, cluster_model
     img_bow_hist = np.array(
         [np.bincount(clustered_words, minlength=n_clusters) for clustered_words in img_clustered_words])
 
-    X_train = img_bow_hist[training_idxs]
-    X_test = img_bow_hist[test_idxs]
-    X_val = img_bow_hist[val_idxs]
+    X = img_bow_hist
+    print 'done generating BoW histograms.'
 
-    y_labels = np.array(labeled_img_paths)[:,1]
+    return X, cluster_model
 
-    y_train = y_labels[training_idxs]
-    y_test = y_labels[test_idxs]
-    y_val = img_bow_hist[val_idxs]
+def perform_data_split(X, y, training_idxs, test_idxs, val_idxs):
+    """
+    Split X and y into train/test/val sets
 
-    return X_train, X_test, X_val, y_train, y_test, y_val, cluster_model
+    Parameters:
+    -----------
+    X : eg, use img_bow_hist
+    y : corresponding labels for X
+    training_idxs : list/array of integers used as indicies for training rows
+    test_idxs : same
+    val_idxs : same
+
+    Returns:
+    --------
+    X_train, X_test, X_val, y_train, y_test, y_val
+    """
+    X_train = X[training_idxs]
+    X_test = X[test_idxs]
+    X_val = X[val_idxs]
+
+    y_train = y[training_idxs]
+    y_test = y[test_idxs]
+    y_val = y[val_idxs]
+
+    return X_train, X_test, X_val, y_train, y_test, y_val
+
 
 def img_to_vect(img_path, cluster_model):
     """
     Given an image path and a trained clustering model (eg KMeans),
-    generates a feature vector representing that image
+    generates a feature vector representing that image.
+    Useful for processing new images for a classifier prediction.
     """
 
     img = read_image(img_path)
