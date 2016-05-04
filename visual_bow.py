@@ -129,18 +129,6 @@ def gen_bow_features(labeled_img_paths, percent_test, percent_val, cluster_model
     """
     n_clusters = cluster_model.n_clusters
 
-    # # img_keypoints = {}
-    # img_descs = []
-    #
-    # print 'generating SIFT keypoints for %i images' % len(labeled_img_paths)
-    #
-    # for img_path, label in labeled_img_paths:
-    #     img = read_image(img_path)
-    #     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #     sift = cv2.xfeatures2d.SIFT_create()
-    #     kp, desc = sift.detectAndCompute(gray, None)
-    #     # img_keypoints[img_path] = kp
-    #     img_descs.append(desc)
     img_descs = gen_sift_features(labeled_img_paths)
 
     # Generate indexes of training rows
