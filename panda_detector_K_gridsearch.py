@@ -74,6 +74,8 @@ exports = joblib.dump(results, '%s/result.pickle' % result_path)
 
 print '\n* * *'
 print 'Scored grid search with metric: "%s"' % scoring
+
 K_vals = sorted(results.keys())
 for K in K_vals:
-    print 'For K = %i:\tSVM %f\tAdaBoost %f' % (K, results[K]['svm_score'], results[K]['ada_score']);
+    print 'For K = %i:\tSVM %f\tAdaBoost %f\tK-Means Inertia %f' % (
+        K, results[K]['svm_score'], results[K]['ada_score'], results[K]['inertia']);
