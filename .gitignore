@@ -1,3 +1,4 @@
+*.log
 .ipynb_checkpoints/
 pickles/
 *.jpg
