@@ -1,12 +1,13 @@
 # Grid search over K, SVM params, and AdaBoost params.
+# Use SIFT features generated
 # Ian London 2016
 
 import K_grid_search as search
 from sklearn.externals import joblib
+import glob
+import os
 
-scoring = 'f1_micro'
-print 'Scoring grid search with metric: %s' % scoring
-
+scoring = 'recall_micro'
 
 # load SIFT features (eg from panda_detector_more_data notebook)
 img_descs = joblib.load('pickles/img_descs/img_descs.pickle')
@@ -22,7 +23,7 @@ training_idxs, test_idxs, val_idxs = search.bow.train_test_val_split_idxs(
     percent_val=0.15
 )
 
-results = []
+results = {}
 K_vals = [50, 150, 300, 500]
 
 for K in K_vals:
@@ -36,12 +37,13 @@ for K in K_vals:
     print '\nAdaBoost Scores: '
     adaGS, ada_score = search.run_ada(X_train, X_test, y_train, y_test, scoring)
 
-    results.append((K, dict(
+    results[K] = dict(
+        inertia = cluster_model.inertia_,
         svmGS=svmGS,
         adaGS=adaGS,
         cluster_model=cluster_model,
         svm_score=svm_score,
-        ada_score=ada_score)))
+        ada_score=ada_score)
 
     print '\n*** K=%i DONE ***\n' % K
 
@@ -49,7 +51,29 @@ print '**************************'
 print '***** FINISHED ALL K *****'
 print '**************************\n'
 
-for K, svm_score, ada_score in [(K, d['svm_score'], d['ada_score']) for K, d in results]:
-    print 'For K = %i:\tSVM %f\tAdaBoost %f' % (K, svm_score, ada_score);
+# pickle for later analysis
+###########################
 
-exports = joblib.dump(results, 'pickles/k_grid_result/result.pickle')
+feature_data_path = 'pickles/k_grid_feature_data/'
+result_path = 'pickles/k_grid_result'
+
+# delete previous pickles
+for path in [feature_data_path, result_path]:
+    for f in glob.glob(path+'/*'):
+        os.remove(f)
+
+print 'pickling X_train, X_test, X_val, y_train, y_test, y_val'
+
+for obj, obj_name in zip( [X_train, X_test, X_val, y_train, y_test, y_val],
+                         ['X_train', 'X_test', 'X_val', 'y_train', 'y_test', 'y_val'] ):
+    joblib.dump(obj, '%s%s.pickle' % (feature_data_path, obj_name))
+
+print 'pickling results'
+
+exports = joblib.dump(results, '%s/result.pickle' % result_path)
+
+print '\n* * *'
+print 'Scored grid search with metric: "%s"' % scoring
+K_vals = sorted(results.keys())
+for K in K_vals:
+    print 'For K = %i:\tSVM %f\tAdaBoost %f' % (K, results[K]['svm_score'], results[K]['ada_score']);

@@ -1,3 +1,5 @@
+# Convenience functions to run a grid search over the classiers and over K in KMeans
+
 import numpy as np
 import visual_bow as bow
 from sklearn.cluster import MiniBatchKMeans
@@ -27,7 +29,7 @@ def cluster_and_split(img_descs, y, training_idxs, test_idxs, val_idxs, K):
     return X_train, X_test, X_val, y_train, y_test, y_val, cluster_model
 
 def run_svm(X_train, X_test, y_train, y_test, scoring,
-    c_vals=[0.1, 1, 5, 10, 75], gamma_vals=[0.5, 0.1, 0.01, 0.0001, 0.00001]):
+    c_vals=[1, 5, 10], gamma_vals=[0.1, 0.01, 0.0001, 0.00001]):
 
     param_grid = [
     #   {'C': c_vals, 'kernel': ['linear']},
@@ -45,7 +47,7 @@ def run_svm(X_train, X_test, y_train, y_test, scoring,
     return svc, test_score
 
 def run_ada(X_train, X_test, y_train, y_test, scoring,
-    n_estimators=[100, 250, 500, 750], learning_rate=[0.8, 0.9, 1.0, 1.1, 1.2]):
+    n_estimators=[50, 100, 250], learning_rate=[1.0, 1.5]):
 
     ada_params={
         'n_estimators':n_estimators,
