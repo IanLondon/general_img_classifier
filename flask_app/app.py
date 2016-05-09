@@ -12,6 +12,8 @@ ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif']
 
 APP_DIR = os.path.dirname(os.path.realpath(__file__))
 
+MAX_PIXEL_DIM = 2000
+
 PICKLE_DIR = os.path.abspath(
     os.path.join(
     APP_DIR,
@@ -40,6 +42,22 @@ def allowed_file(filename):
 # upload image with curl using:
 # curl -F 'file=@/home/ian/metis/projects/img-detector/panda_rip/405.JPEG' 'http://127.0.0.1:5000/'
 
+def img_resize(img):
+    height, width, _ = img.shape
+    if height > MAX_PIXEL_DIM:
+        # too tall
+        resize_ratio = float(MAX_PIXEL_DIM)/height
+    else:
+        # too wide, or a square which is too big
+        resize_ratio = float(MAX_PIXEL_DIM)/width
+
+    dim = (int(resize_ratio*width), int(resize_ratio*height))
+
+    resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+    app.logger.debug('resized to %s' % str(resized.shape))
+
+    return resized
+
 def img_to_vect(img_np):
     """
     Given an image path and a trained clustering model (eg KMeans),
@@ -48,6 +66,10 @@ def img_to_vect(img_np):
     """
     # XXX: Changed from visual_bow.py to deal with in-memory img (not file)
     # img = read_image(img_path)
+    height, width, _ = img_np.shape
+    app.logger.debug('Color image size - H:%i, W:%i' % (height, width))
+    if height > MAX_PIXEL_DIM or width > MAX_PIXEL_DIM:
+        img_np = img_resize(img_np)
     gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
     sift = cv2.xfeatures2d.SIFT_create()
     kp, desc = sift.detectAndCompute(gray, None)

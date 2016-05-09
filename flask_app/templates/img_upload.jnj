@@ -11,7 +11,7 @@
       <h1>Panda or Not Panda?</h1>
       <h2>Upload an image</h2>
       <form action="" method=post enctype=multipart/form-data>
-        <p><input type="file" name=file>
+           <input type="file" name=file>
            <input type=submit value='Is it a panda?'>
       </form>
 
