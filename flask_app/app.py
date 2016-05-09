@@ -74,6 +74,14 @@ def home():
 
 
 if __name__=="__main__":
-    logging.basicConfig(filename='/home/ian/panda_app.log',level=logging.DEBUG)
-    app.logger.info('\n\n* * *\n\nOpenCV version is %s. should be at least 3.1.0, with nonfree installed.' % cv2.__version__)
     app.run()
+    #logging.basicConfig(filename='/home/ian/panda_app.log',level=logging.DEBUG)
+    file_handler = logging.RotatingFileHandler('panda_app.log')
+    file_handler.setFormatter(Formatter(
+        '%(asctime)s %(levelname)s: %(message)s '
+        '[in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.DEBUG)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.DEBUG)
+    app.logger.info('\n\n* * *\n\nOpenCV version is %s. should be at least 3.1.0, with nonfree installed.' % cv2.__version__)
