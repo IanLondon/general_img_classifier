@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif']
 
-PICKLE_DIR = '../pickles/'
+PICKLE_DIR = '/home/ian/general_img_classifier/pickles/'
 
 # TODO: make pickles for kmeans and single best classifier.
 k_grid_results = joblib.load(PICKLE_DIR + 'k_grid_result/result.pickle')
@@ -70,6 +70,6 @@ def home():
 
 
 if __name__=="__main__":
-    app.run(debug=True)
-    logging.basicConfig(filename='error.log',level=logging.DEBUG)
+    logging.basicConfig(filename='/home/ian/panda_app.log',level=logging.DEBUG)
     app.logger.info('\n\n* * *\n\nOpenCV version is %s. should be at least 3.1.0, with nonfree installed.' % cv2.__version__)
+    app.run()
