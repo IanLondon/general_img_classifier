@@ -10,13 +10,24 @@ app = Flask(__name__)
 
 ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif']
 
+APP_DIR = os.path.dirname(os.path.realpath(__file__))
+
 PICKLE_DIR = os.path.abspath(
     os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
+    APP_DIR,
     '../pickles/'))
 
+LOG_PATH = os.path.abspath(os.path.join(APP_DIR,'../panda_app.log'))
+
+logging.basicConfig(filename=LOG_PATH,level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+
+app.logger.setLevel(logging.DEBUG)
+app.logger.info('\n\n* * *\n\nOpenCV version is %s. should be at least 3.1.0, with nonfree installed.' % cv2.__version__)
+
+
 # TODO: make pickles for kmeans and single best classifier.
-k_grid_results = joblib.load(PICKLE_DIR + 'k_grid_result/result.pickle')
+k_grid_results = joblib.load(os.path.join(PICKLE_DIR, 'k_grid_result/result.pickle'))
 cluster_model = k_grid_results[500]['cluster_model']
 clf = k_grid_results[500]['svmGS'].best_estimator_
 # free up memory by tossing the subpar models etc:
@@ -49,13 +60,13 @@ def img_to_vect(img_np):
     return img_bow_hist.reshape(1,-1)
 
 def is_panda(img_str):
-    print type(img_str)
     # img = cv2.imdecode(np.fromstring(request.files['file'].read(), np.uint8), cv2.CV_LOAD_IMAGE_UNCHANGED)
     nparr = np.fromstring(img_str, np.uint8)
     img_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     # convert to K-vector of codeword frequencies
     img_vect = img_to_vect(img_np)
     prediction = clf.predict(img_vect) #eg ['True'] or ['False']
+    app.logger.debug('was panda? "%s".' % prediction[0])
     return prediction[0] == 'True'
 
 @app.route('/', methods=['GET','POST'])
@@ -74,14 +85,4 @@ def home():
 
 
 if __name__=="__main__":
-    app.run()
-    #logging.basicConfig(filename='/home/ian/panda_app.log',level=logging.DEBUG)
-    file_handler = logging.RotatingFileHandler('panda_app.log')
-    file_handler.setFormatter(Formatter(
-        '%(asctime)s %(levelname)s: %(message)s '
-        '[in %(pathname)s:%(lineno)d]'
-    ))
-    file_handler.setLevel(logging.DEBUG)
-    app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.DEBUG)
-    app.logger.info('\n\n* * *\n\nOpenCV version is %s. should be at least 3.1.0, with nonfree installed.' % cv2.__version__)
+    app.run(debug=True)
