@@ -44,7 +44,7 @@ def allowed_file(filename):
 
 def img_resize(img):
     height, width, _ = img.shape
-    if height > MAX_PIXEL_DIM:
+    if height > width:
         # too tall
         resize_ratio = float(MAX_PIXEL_DIM)/height
     else:
