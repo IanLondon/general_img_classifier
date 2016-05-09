@@ -5,11 +5,15 @@ import sys
 import cv2
 import numpy as np
 from sklearn.externals import joblib
+import os
 app = Flask(__name__)
 
 ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif']
 
-PICKLE_DIR = '/home/ian/general_img_classifier/pickles/'
+PICKLE_DIR = os.path.abspath(
+    os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    '../pickles/'))
 
 # TODO: make pickles for kmeans and single best classifier.
 k_grid_results = joblib.load(PICKLE_DIR + 'k_grid_result/result.pickle')
