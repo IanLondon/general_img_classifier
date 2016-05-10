@@ -4,7 +4,7 @@ Panda images for training are from the Caltech101 dataset and from several hundr
 
 # Live Example
 
-1. Check out the flask app: (http://54.210.9.61/panda_app/)[http://54.210.9.61/panda_app/]
+1. Check out the flask app: http://54.210.9.61/panda_app/
 
 2. Use the simple API. Eg with `curl`:
 `curl -X POST -F "file=@path/to/cat.jpg" 'http://54.210.9.61/panda_app/'`
